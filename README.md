@@ -69,8 +69,8 @@ public/
 
 ## Build Output
 
-- Chrome: `.output/chrome-mv3/`
-- Firefox: `.output/firefox-mv2/`
+- Chrome: `output/chrome-mv3/`
+- Firefox: `output/firefox-mv2/`
 
 ## Related
 
