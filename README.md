@@ -2,6 +2,12 @@
 
 Quick access to your funnel stats, leads, and copy links from any webpage.
 
+## About My Mini Funnel
+
+[My Mini Funnel](https://myminifunnel.com) helps coaches, consultants, and creators build beautiful quizzes and calculators that turn website visitors into leads. Create interactive lead magnets in minutes, embed them anywhere, and watch your email list grow.
+
+This Chrome extension gives you instant access to your funnel performance without leaving whatever page you're working on.
+
 ## Features
 
 - **Real-time stats**: Views, Leads, Conversion Rate, Active Funnels
@@ -53,7 +59,7 @@ public/
 
 2. **Sidebar**: When user clicks the extension icon, a sidebar slides in from the right with their dashboard.
 
-3. **API Calls**: Background service worker makes authenticated calls to the Base44 backend (`getExtensionData` function).
+3. **API Calls**: Background service worker makes authenticated calls to fetch your stats and leads.
 
 ## Generate Icons
 
@@ -69,4 +75,3 @@ public/
 ## Related
 
 - [My Mini Funnel](https://myminifunnel.com) - Build lead magnets in minutes
-- [Base44](https://base44.com) - Backend platform
