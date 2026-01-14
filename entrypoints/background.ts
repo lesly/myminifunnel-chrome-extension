@@ -118,7 +118,7 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'OPEN_APP') {
-      chrome.tabs.create({ url: 'https://app.myminifunnel.com/extension-connect' });
+      chrome.tabs.create({ url: 'https://app.myminifunnel.com/ExtensionConnect' });
       sendResponse({ success: true });
       return;
     }
