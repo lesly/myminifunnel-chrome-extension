@@ -19,5 +19,12 @@ export default defineConfig({
     action: {
       default_title: 'Toggle My Mini Funnel Dashboard',
     },
+    // Make icons accessible to content scripts
+    web_accessible_resources: [
+      {
+        resources: ['icon/*'],
+        matches: ['<all_urls>'],
+      },
+    ],
   },
 });

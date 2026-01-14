@@ -35,7 +35,7 @@ interface ExtensionData {
 }
 
 export default defineContentScript({
-  matches: [], // Empty - never auto-inject, only via chrome.scripting.executeScript()
+  matches: ['https://never.invalid/*'], // Never matches - only injected via activeTab + scripting
   runAt: 'document_idle',
 
   main() {
@@ -394,19 +394,11 @@ export default defineContentScript({
     }
 
     function getSidebarHTML() {
+      const iconUrl = chrome.runtime.getURL('icon/128.png');
       return `
         <div class="mmf-header">
           <div class="mmf-logo">
-            <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
-              <circle cx="24" cy="24" r="24" fill="url(#mmfgrad)" />
-              <path d="M16 20L24 28L32 20" stroke="white" stroke-width="3" stroke-linecap="round" />
-              <defs>
-                <linearGradient id="mmfgrad" x1="0" y1="0" x2="48" y2="48">
-                  <stop stop-color="#67C090" />
-                  <stop offset="1" stop-color="#26667F" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img src="${iconUrl}" alt="My Mini Funnel" class="mmf-header-icon" />
             <span>Dashboard</span>
           </div>
           <div class="mmf-header-actions">
@@ -440,16 +432,7 @@ export default defineContentScript({
 
           <div class="mmf-connect-screen">
             <div class="mmf-connect-logo">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <circle cx="24" cy="24" r="24" fill="url(#mmfgrad2)" />
-                <path d="M16 20L24 28L32 20" stroke="white" stroke-width="3" stroke-linecap="round" />
-                <defs>
-                  <linearGradient id="mmfgrad2" x1="0" y1="0" x2="48" y2="48">
-                    <stop stop-color="#67C090" />
-                    <stop offset="1" stop-color="#26667F" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img src="${iconUrl}" alt="My Mini Funnel" class="mmf-connect-icon" />
             </div>
             <h3>My Mini Funnel</h3>
             <p>Connect your account to view stats and manage funnels.</p>
@@ -567,6 +550,26 @@ export default defineContentScript({
           font-weight: 600;
           font-size: 16px;
           color: #124170;
+        }
+
+        .mmf-header-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          object-fit: contain;
+        }
+
+        .mmf-connect-logo {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+
+        .mmf-connect-icon {
+          width: 72px;
+          height: 72px;
+          border-radius: 16px;
+          object-fit: contain;
         }
 
         .mmf-header-actions {

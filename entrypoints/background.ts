@@ -49,29 +49,75 @@ interface ExtensionData {
 }
 
 export default defineBackground(() => {
+  // Track the tab that initiated the connection flow
+  let connectingFromTabId: number | null = null;
+
   // Handle extension icon click - toggle sidebar
   chrome.action.onClicked.addListener(async (tab) => {
-    if (!tab.id) return;
+    if (!tab.id || !tab.url) return;
+
+    // Skip non-injectable pages (Chrome protected pages + Base44 dev environment)
+    if (
+      tab.url.startsWith('chrome://') ||
+      tab.url.startsWith('chrome-extension://') ||
+      tab.url.startsWith('about:') ||
+      tab.url.startsWith('https://chrome.google.com/') ||
+      tab.url.startsWith('https://chromewebstore.google.com/') ||
+      tab.url.startsWith('https://app.base44.com/')
+    ) {
+      return;
+    }
 
     // Try to toggle existing sidebar, or inject and toggle
     try {
       await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' });
     } catch {
       // Content script not loaded - inject it first
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content-scripts/sidebar.js'],
-      });
-      // Small delay for script initialization, then toggle
-      await new Promise(resolve => setTimeout(resolve, 50));
-      await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' }).catch(() => {});
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content-scripts/sidebar.js'],
+        });
+        // Small delay for script initialization, then toggle
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' });
+      } catch (e) {
+        console.error('[MMF] Failed to inject sidebar:', e);
+      }
     }
   });
 
   // Listen for messages from content script and sidebar
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'AUTH_TOKEN_FOUND') {
       handleAuthToken(message.data);
+      // Auto-close the ExtensionConnect tab and open sidebar on original tab
+      if (sender.tab?.id && sender.tab.url?.includes('ExtensionConnect')) {
+        const originalTabId = connectingFromTabId;
+        connectingFromTabId = null;
+
+        setTimeout(async () => {
+          // Close the ExtensionConnect tab
+          chrome.tabs.remove(sender.tab!.id!).catch(() => {});
+
+          // Open sidebar on the original tab
+          if (originalTabId) {
+            try {
+              // Focus the original tab
+              await chrome.tabs.update(originalTabId, { active: true });
+              // Inject and show sidebar
+              await chrome.scripting.executeScript({
+                target: { tabId: originalTabId },
+                files: ['content-scripts/sidebar.js'],
+              });
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await chrome.tabs.sendMessage(originalTabId, { type: 'TOGGLE_SIDEBAR' });
+            } catch (e) {
+              // Tab might be closed or not injectable
+            }
+          }
+        }, 800);
+      }
       sendResponse({ success: true });
       return;
     }
@@ -111,6 +157,10 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'OPEN_APP') {
+      // Save the current tab so we can return to it after auth
+      if (sender.tab?.id) {
+        connectingFromTabId = sender.tab.id;
+      }
       chrome.tabs.create({ url: 'https://app.myminifunnel.com/ExtensionConnect' });
       sendResponse({ success: true });
       return;
