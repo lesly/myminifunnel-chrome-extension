@@ -9,7 +9,7 @@ export default defineConfig({
     description: 'Quick access to your funnel stats, leads, and copy links from anywhere',
     version: '1.0.0',
     permissions: ['storage', 'activeTab', 'scripting'],
-    host_permissions: ['https://app.myminifunnel.com/*', 'https://app.base44.com/*', '<all_urls>'],
+    host_permissions: ['https://app.myminifunnel.com/*', 'https://app.base44.com/*'],
     icons: {
       16: 'icon/16.png',
       48: 'icon/48.png',

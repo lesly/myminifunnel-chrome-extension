@@ -26,6 +26,7 @@ interface ExtensionData {
     email: string;
     created_date: string;
     funnel_name: string;
+    country_code?: string;
   }>;
   user: {
     email: string;
@@ -34,7 +35,7 @@ interface ExtensionData {
 }
 
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  matches: [], // Empty - never auto-inject, only via chrome.scripting.executeScript()
   runAt: 'document_idle',
 
   main() {
@@ -42,6 +43,27 @@ export default defineContentScript({
     let sidebarEl: HTMLElement | null = null;
     let overlayEl: HTMLElement | null = null;
     let authPollingInterval: ReturnType<typeof setInterval> | null = null;
+
+    // Convert country code to flag emoji (e.g., "FR" -> "🇫🇷")
+    function countryCodeToFlag(code: string): string {
+      if (!code || code.length !== 2) return '';
+      const codePoints = code
+        .toUpperCase()
+        .split('')
+        .map((char) => 127397 + char.charCodeAt(0));
+      return String.fromCodePoint(...codePoints);
+    }
+
+    // Format date to short format (e.g., "Jan 14, 2026")
+    function formatDate(dateStr: string): string {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      } catch {
+        return '';
+      }
+    }
 
     // Listen for toggle message from background
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -296,10 +318,14 @@ export default defineContentScript({
             .map(
               (lead) => `
               <div class="mmf-lead">
-                <div class="mmf-lead-avatar">${lead.name?.charAt(0)?.toUpperCase() || '?'}</div>
+                <img class="mmf-lead-avatar" src="https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(lead.email || lead.name || 'user')}" alt="${lead.name || 'Contact'}" />
                 <div class="mmf-lead-info">
                   <div class="mmf-lead-name">${lead.name || 'Anonymous'}</div>
                   <div class="mmf-lead-meta">${lead.funnel_name || ''}</div>
+                </div>
+                <div class="mmf-lead-right">
+                  ${lead.country_code ? `<span class="mmf-lead-flag">${countryCodeToFlag(lead.country_code)}</span>` : ''}
+                  ${lead.created_date ? `<span class="mmf-lead-date">${formatDate(lead.created_date)}</span>` : ''}
                 </div>
               </div>
             `
@@ -673,21 +699,21 @@ export default defineContentScript({
 
         .mmf-stats {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
           margin-bottom: 16px;
         }
 
         .mmf-stat {
           background: white;
           border-radius: 8px;
-          padding: 12px 8px;
+          padding: 14px 12px;
           text-align: center;
           border: 1px solid #e5e7eb;
         }
 
         .mmf-stat-value {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 700;
           color: #124170;
         }
@@ -695,7 +721,7 @@ export default defineContentScript({
         .mmf-stat-label {
           font-size: 11px;
           color: #6b7280;
-          margin-top: 2px;
+          margin-top: 4px;
         }
 
         .mmf-section {
@@ -804,14 +830,8 @@ export default defineContentScript({
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #67C090, #26667F);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          font-weight: 600;
           flex-shrink: 0;
+          object-fit: cover;
         }
 
         .mmf-lead-info {
@@ -831,6 +851,25 @@ export default defineContentScript({
         .mmf-lead-meta {
           font-size: 12px;
           color: #6b7280;
+        }
+
+        .mmf-lead-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+          flex-shrink: 0;
+        }
+
+        .mmf-lead-flag {
+          font-size: 16px;
+          line-height: 1;
+        }
+
+        .mmf-lead-date {
+          font-size: 11px;
+          color: #9ca3af;
+          white-space: nowrap;
         }
 
         .mmf-empty {

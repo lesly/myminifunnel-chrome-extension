@@ -49,29 +49,22 @@ interface ExtensionData {
 }
 
 export default defineBackground(() => {
-  console.log('[MMF] Background service worker started');
-
   // Handle extension icon click - toggle sidebar
   chrome.action.onClicked.addListener(async (tab) => {
-    if (tab.id) {
-      // Send message to content script to toggle sidebar
-      try {
-        await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' });
-      } catch {
-        // Content script not loaded yet, inject it first
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content-scripts/sidebar.js'],
-        });
-        // Try again after injection
-        setTimeout(async () => {
-          try {
-            await chrome.tabs.sendMessage(tab.id!, { type: 'TOGGLE_SIDEBAR' });
-          } catch (e) {
-            console.error('[MMF] Failed to toggle sidebar:', e);
-          }
-        }, 100);
-      }
+    if (!tab.id) return;
+
+    // Try to toggle existing sidebar, or inject and toggle
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' });
+    } catch {
+      // Content script not loaded - inject it first
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-scripts/sidebar.js'],
+      });
+      // Small delay for script initialization, then toggle
+      await new Promise(resolve => setTimeout(resolve, 50));
+      await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_SIDEBAR' }).catch(() => {});
     }
   });
 
@@ -137,12 +130,8 @@ async function handleAuthToken(data: AuthData) {
     serverUrl: serverUrl || API_CONFIG.serverUrl,
   });
 
-  // Fetch initial data
-  try {
-    await fetchExtensionData();
-  } catch (error) {
-    console.error('[MMF] Initial fetch failed:', error);
-  }
+  // Prefetch data for faster first load
+  fetchExtensionData().catch(() => {});
 }
 
 // Fetch extension data from Base44 backend
@@ -160,8 +149,6 @@ async function fetchExtensionData(): Promise<ExtensionData> {
     'serverUrl',
   ]);
 
-  console.log('[MMF] Auth data:', { hasToken: !!authToken, appId, serverUrl });
-
   if (!authToken) {
     throw new Error('Not connected. Please open My Mini Funnel app first.');
   }
@@ -169,8 +156,6 @@ async function fetchExtensionData(): Promise<ExtensionData> {
   const baseUrl = serverUrl || API_CONFIG.serverUrl;
   const appIdentifier = appId || API_CONFIG.appId;
   const url = `${baseUrl}/api/apps/${appIdentifier}/functions/getExtensionData`;
-
-  console.log('[MMF] Calling:', url);
 
   // Call getExtensionData function
   const response = await fetch(url, {
@@ -183,12 +168,7 @@ async function fetchExtensionData(): Promise<ExtensionData> {
     body: JSON.stringify({}),
   });
 
-  console.log('[MMF] Response status:', response.status);
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[MMF] Error response:', errorText);
-
     if (response.status === 401) {
       await chrome.storage.local.remove(['authToken', 'userData']);
       throw new Error('Session expired. Please log in to My Mini Funnel again.');
@@ -197,7 +177,6 @@ async function fetchExtensionData(): Promise<ExtensionData> {
   }
 
   const result = await response.json();
-  console.log('[MMF] Result:', result);
 
   // Handle Base44 response format
   const data: ExtensionData = result.data || result;
